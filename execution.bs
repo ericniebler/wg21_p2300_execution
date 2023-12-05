@@ -6170,15 +6170,13 @@ template&lt;class Domain, class Tag, sender Sender, class... Args>
 
 #### `execution::let_value`, `execution::let_error`, `execution::let_stopped`,  <b>[exec.let]</b> #### {#spec-execution.senders.adapt.let}
 
-1. `let_value` transforms a sender's value completion into a new child
-    asynchronous operation. `let_error` transforms a sender's error completion
-    into a new child asynchronous operation. `let_stopped` transforms a sender's
-    stopped completion into a new child asynchronous operation.
+1. `let_value`, `let_error`, and `let_stopped` transform a sender's value,
+    error, and stopped completions respectively into a new child asynchronous
+    operation.
 
-2. Let the expression <code><i>let-cpo</i></code> be one of `let_value`,
-    `let_error`, or `let_stopped` and let <code><i>set-cpo</i></code> be the
-    completion function that corresponds to <code><i>let-cpo</i></code>
-    (`set_value` for `let_value`, etc.). For subexpressions `s` and `re`, let
+2. The names `let_value`, `let_error`, and `let_stopped` denote customization point
+    objects. Let the expression <code><i>let-cpo</i></code> be one of `let_value`,
+    `let_error`, or `let_stopped`. For subexpressions `s` and `re`, let
     <code><i>inner-env</i>(s, re)</code> be an environment `e` such that:
 
         1. `get_domain(e)` is expression-equivalent
@@ -6195,9 +6193,9 @@ template&lt;class Domain, class Tag, sender Sender, class... Args>
             
             or if neither of them are, `get_scheduler(e)` is ill-formed.
 
-        3. For all other query objects <code><i>Q</i></code> and arguments `args...`,
-            <code><i>Q</i>(e, args...)</code> is expression-equivalent to
-            <code><i>Q</i>(re, args...)</code>.
+        3. For all other query objects <code><i>q</i></code> and arguments `args...`,
+            <code><i>q</i>(e, args...)</code> is expression-equivalent to
+            <code><i>q</i>(re, args...)</code>.
 
 3. The names `let_value`, `let_error`, and `let_stopped` denote customization
     point objects. For subexpressions `s` and `f`, let `S` be `decltype((s))`,
@@ -6212,12 +6210,36 @@ template&lt;class Domain, class Tag, sender Sender, class... Args>
       <pre highlight="c++">
       transform_sender(
         <i>get-domain-early</i>(s),
-        <i>make-let-sender</i>(f, s));
+        <i>make-sender</i>(let-cpo, f, s));
       </pre>
 
-    where <code><i>make-let-sender</i>(f, s)</code> is expression-equivalent to
-    <code><i>make-sender</i>(<i>let-cpo</i>, f, s)</code> and returns a sender
-    object `s2` that behaves as follows:
+4. For `let_value`, `let_error`, and `let_stopped`, let <code><i>set-cpo</i></code>
+    be `set_value_t`, `set_error_t`, and `set_stopped_t` respectively. The
+    exposition-only class template <code><i>impls-for</i></code>
+    ([exec.snd.general]) is specialized for each of `let_value_t`, `let_error_t`,
+    and `let_stopped_t` as follows:
+
+        <pre highlight="c++">
+        template&lt;>
+        struct <i>impls-for</i>&lt;<i>let-cpo</i>> : <i>default-impls</i> {
+          static constexpr auto get_state = <i>see below</i>;
+          static constexpr auto complete = <i>see below</i>;
+        };
+        </pre>
+
+    1. <code><i>impls-for</i>&lt;<i>let-cpo</i>>::get_state</code> is initialized with
+        the lambda:
+
+            <pre highlight="c++">
+            []&lt;class Sndr, class Rcvr>(Sndr&& sndr, Rcvr& rcvr) {
+              auto [ign, fun, child] = std::forward<Sndr>(sndr);
+              auto sched = <i>query-or-default</i>();              
+            }
+            </pre>
+
+
+
+
 
     1. When `s2` is connected to some receiver `out_r`, it:
 
